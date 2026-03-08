@@ -394,7 +394,11 @@ export const searchPosts = async ({
 
 export const createPost = async (params: CreatePostParams): Promise<ToolResponse> => {
   try {
-    const post = await ghostApi.posts.add(params);
+    const queryParams: Record<string, string> = {};
+    if (params.html) {
+      queryParams.source = 'html';
+    }
+    const post = await (ghostApi.posts.add as any)(params, queryParams);
     return {
       content: [
         {
@@ -410,11 +414,15 @@ export const createPost = async (params: CreatePostParams): Promise<ToolResponse
 
 export const updatePost = async ({ id, ...params }: { id: string } & UpdatePostParams): Promise<ToolResponse> => {
   try {
-    // updated_at is required
-    if (!params.updated_at) {
-      params.updated_at = new Date().toISOString();
+    const queryParams: Record<string, string> = {};
+    if (params.html) {
+      queryParams.source = 'html';
     }
-    const post = await ghostApi.posts.edit({ id, ...params });
+    // Fetch current post to get the correct updated_at for collision detection
+    const currentPost = await ghostApi.posts.read({ id });
+    params.updated_at = currentPost.updated_at || new Date().toISOString();
+
+    const post = await (ghostApi.posts.edit as any)({ id, ...params }, queryParams);
     return {
       content: [
         {

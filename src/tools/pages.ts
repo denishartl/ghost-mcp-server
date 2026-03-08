@@ -306,7 +306,11 @@ export const getPage = async ({
 
 export const createPage = async (params: CreatePageParams): Promise<ToolResponse> => {
   try {
-    const page = await ghostApi.pages.add(params);
+    const queryParams: Record<string, string> = {};
+    if (params.html) {
+      queryParams.source = 'html';
+    }
+    const page = await (ghostApi.pages.add as any)(params, queryParams);
     return {
       content: [
         {
@@ -322,13 +326,17 @@ export const createPage = async (params: CreatePageParams): Promise<ToolResponse
 
 export const updatePage = async ({ id, ...params }: { id: string } & UpdatePageParams): Promise<ToolResponse> => {
   try {
+    const queryParams: Record<string, string> = {};
+    if (params.html) {
+      queryParams.source = 'html';
+    }
     // Get current page info
     const currentPage = await ghostApi.pages.read({ id });
 
     // Use current updated_at
     params.updated_at = currentPage.updated_at || new Date().toISOString();
-    
-    const page = await ghostApi.pages.edit({ id, ...params });
+
+    const page = await (ghostApi.pages.edit as any)({ id, ...params }, queryParams);
     return {
       content: [
         {
