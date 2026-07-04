@@ -96,25 +96,65 @@ Creates a new post.
 Input:
 ```json
 {
-  "title": "string",     // Required: Post title
-  "html": "string",      // Optional: HTML content
-  "lexical": "string",   // Optional: Lexical content
-  "status": "string",    // Optional: Post status (published/draft/scheduled)
-  "visibility": "string" // Optional: Visibility level (public/members/paid/tiers)
+  "title": "string",       // Required: Post title
+  "html": "string",        // Optional: HTML content (converted server-side to Lexical)
+  "lexical": "string",     // Optional: Lexical content
+  "status": "string",      // Optional: Post status (published/draft/scheduled)
+  "visibility": "string",  // Optional: Visibility level (public/members/paid/tiers)
+  "tags": ["string"],      // Optional: existing tag IDs to link (never creates new tags)
+  "authors": ["string"],   // Optional: author IDs
+  "feature_image": "string",
+  "feature_image_alt": "string",
+  "feature_image_caption": "string",
+  "twitter_image": "string",
+  "twitter_title": "string",
+  "twitter_description": "string",
+  "og_image": "string",
+  "og_title": "string",
+  "og_description": "string",
+  "meta_title": "string",
+  "meta_description": "string",
+  "custom_excerpt": "string"
 }
 ```
 
+If `html` is provided, the server passes Ghost's `source: 'html'` query parameter automatically so the content is actually converted, instead of being silently dropped.
+
 ### update_post
-Updates an existing post.
+Updates an existing post. Accepts the same fields as `create_post` plus `id`. If you don't pass `updated_at` yourself, the server fetches the post's current value first, which Ghost requires for its edit-collision check.
 
 Input:
 ```json
 {
   "id": "string",       // Required: Post ID
   "title": "string",    // Optional: Post title
-  "html": "string",     // Optional: HTML content
+  "html": "string",     // Optional: HTML content (converted server-side to Lexical)
   "lexical": "string",  // Optional: Lexical content
-  "status": "string"    // Optional: Post status
+  "status": "string",   // Optional: Post status
+  "tags": ["string"]    // Optional: existing tag IDs (replaces current tags)
+}
+```
+
+### delete_tag
+Deletes a tag.
+
+Input:
+```json
+{
+  "id": "string" // Required: Tag ID
+}
+```
+
+### update_tag
+Updates a tag's name, slug, or description.
+
+Input:
+```json
+{
+  "id": "string",          // Required: Tag ID
+  "name": "string",        // Optional
+  "slug": "string",        // Optional
+  "description": "string"  // Optional
 }
 ```
 

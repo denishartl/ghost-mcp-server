@@ -45,8 +45,8 @@ export const getTagsSchema = {
   },
 };
 
-export const getTags = async ({ 
-  limit = 10, 
+export const getTags = async ({
+  limit = 10,
   page = 1,
   order,
   include,
@@ -54,7 +54,7 @@ export const getTags = async ({
 }: TagPaginationParams): Promise<ToolResponse> => {
   try {
     const params: BrowseParams = { limit, page };
-    
+
     if (order) params.order = order;
     if (include) params.include = include;
     if (filter) params.filter = filter;
@@ -65,6 +65,99 @@ export const getTags = async ({
         {
           type: 'text',
           text: JSON.stringify(tags, null, 2),
+        },
+      ],
+    };
+  } catch (error) {
+    throw handleGhostApiError(error);
+  }
+};
+
+// Cleanup tool for junk tags created by bad tag-ID handling (see posts.ts
+// toTagObjects comment). Not part of the normal content pipeline, but
+// needed so a bad create_post call doesn't require a manual trip to the
+// Ghost admin UI to fix.
+export const deleteTagSchema = {
+  name: 'delete_tag',
+  description: 'Delete a tag',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      id: {
+        type: 'string',
+        description: 'Tag ID'
+      }
+    },
+    required: ['id']
+  },
+};
+
+export const updateTagSchema = {
+  name: 'update_tag',
+  description: 'Update a tag',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      id: {
+        type: 'string',
+        description: 'Tag ID'
+      },
+      name: {
+        type: 'string',
+        description: 'Tag name'
+      },
+      slug: {
+        type: 'string',
+        description: 'Tag slug'
+      },
+      description: {
+        type: 'string',
+        description: 'Tag description'
+      }
+    },
+    required: ['id']
+  },
+};
+
+export const deleteTag = async ({ id }: { id: string }): Promise<ToolResponse> => {
+  try {
+    await ghostApi.tags.delete({ id });
+    return {
+      content: [
+        {
+          type: 'text',
+          text: 'Tag deleted successfully',
+        },
+      ],
+    };
+  } catch (error) {
+    throw handleGhostApiError(error);
+  }
+};
+
+export const updateTag = async ({
+  id,
+  name,
+  slug,
+  description
+}: {
+  id: string;
+  name?: string;
+  slug?: string;
+  description?: string;
+}): Promise<ToolResponse> => {
+  try {
+    const params: Record<string, unknown> = { id };
+    if (name !== undefined) params.name = name;
+    if (slug !== undefined) params.slug = slug;
+    if (description !== undefined) params.description = description;
+
+    const tag = await (ghostApi.tags.edit as any)(params);
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(tag, null, 2),
         },
       ],
     };

@@ -193,6 +193,8 @@ declare module '@tryghost/admin-api' {
     };
     tags: {
       browse(params?: BrowseParams): Promise<GhostTag[]>;
+      edit(params: { id: string } & Record<string, unknown>): Promise<GhostTag>;
+      delete(params: { id: string }): Promise<void>;
     };
     users: {
       browse(params?: BrowseParams): Promise<GhostAuthor[]>;
