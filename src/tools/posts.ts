@@ -14,6 +14,17 @@ import type { BrowseParams, ReadParams } from '@tryghost/admin-api';
 
 const ghostApi = createGhostApi();
 
+// Ghost's Admin API links an existing tag by `{id}`, not by a bare ID
+// string. Passing bare strings causes Ghost to create a brand-new tag
+// named after the literal string (this is what created junk tags named
+// after tag IDs in production on 2026-07-02). Always transform before
+// sending. `undefined` means "don't touch the tags field"; `[]` means
+// "explicitly clear all tags" — both are preserved.
+const toTagObjects = (tagIds?: string[]): { id: string }[] | undefined => {
+  if (tagIds === undefined) return undefined;
+  return tagIds.map((id) => ({ id }));
+};
+
 export const getPostsSchema = {
   name: 'get_posts',
   description: 'Get a list of blog posts',
@@ -128,7 +139,7 @@ export const createPostSchema = {
       },
       tags: {
         type: 'array',
-        description: 'Array of tag IDs',
+        description: 'Array of existing tag IDs to link (from the locked tag list). Never used to create new tags.',
         items: {
           type: 'string'
         }
@@ -143,6 +154,54 @@ export const createPostSchema = {
       featured: {
         type: 'boolean',
         description: 'Set as featured post'
+      },
+      feature_image: {
+        type: 'string',
+        description: 'URL of the feature image'
+      },
+      feature_image_alt: {
+        type: 'string',
+        description: 'Alt text for the feature image'
+      },
+      feature_image_caption: {
+        type: 'string',
+        description: 'Caption for the feature image'
+      },
+      twitter_image: {
+        type: 'string',
+        description: 'URL of the Twitter/X share image'
+      },
+      twitter_title: {
+        type: 'string',
+        description: 'Twitter/X share title'
+      },
+      twitter_description: {
+        type: 'string',
+        description: 'Twitter/X share description'
+      },
+      og_image: {
+        type: 'string',
+        description: 'URL of the Open Graph share image'
+      },
+      og_title: {
+        type: 'string',
+        description: 'Open Graph share title'
+      },
+      og_description: {
+        type: 'string',
+        description: 'Open Graph share description'
+      },
+      meta_title: {
+        type: 'string',
+        description: 'SEO meta title (max ~70 chars)'
+      },
+      meta_description: {
+        type: 'string',
+        description: 'SEO meta description (max ~155 chars)'
+      },
+      custom_excerpt: {
+        type: 'string',
+        description: 'Custom excerpt shown in listings/feeds'
       },
       email_subject: {
         type: 'string',
@@ -199,7 +258,7 @@ export const updatePostSchema = {
       },
       tags: {
         type: 'array',
-        description: 'Array of tag IDs (replaces existing tags)',
+        description: 'Array of existing tag IDs to link (replaces existing tags on the post). Never used to create new tags.',
         items: {
           type: 'string'
         }
@@ -214,6 +273,54 @@ export const updatePostSchema = {
       featured: {
         type: 'boolean',
         description: 'Set as featured post'
+      },
+      feature_image: {
+        type: 'string',
+        description: 'URL of the feature image'
+      },
+      feature_image_alt: {
+        type: 'string',
+        description: 'Alt text for the feature image'
+      },
+      feature_image_caption: {
+        type: 'string',
+        description: 'Caption for the feature image'
+      },
+      twitter_image: {
+        type: 'string',
+        description: 'URL of the Twitter/X share image'
+      },
+      twitter_title: {
+        type: 'string',
+        description: 'Twitter/X share title'
+      },
+      twitter_description: {
+        type: 'string',
+        description: 'Twitter/X share description'
+      },
+      og_image: {
+        type: 'string',
+        description: 'URL of the Open Graph share image'
+      },
+      og_title: {
+        type: 'string',
+        description: 'Open Graph share title'
+      },
+      og_description: {
+        type: 'string',
+        description: 'Open Graph share description'
+      },
+      meta_title: {
+        type: 'string',
+        description: 'SEO meta title (max ~70 chars)'
+      },
+      meta_description: {
+        type: 'string',
+        description: 'SEO meta description (max ~155 chars)'
+      },
+      custom_excerpt: {
+        type: 'string',
+        description: 'Custom excerpt shown in listings/feeds'
       },
       email_subject: {
         type: 'string',
@@ -394,7 +501,21 @@ export const searchPosts = async ({
 
 export const createPost = async (params: CreatePostParams): Promise<ToolResponse> => {
   try {
-    const post = await ghostApi.posts.add(params);
+    // Ghost only converts `html` into its native Lexical format when the
+    // request is made with `source: 'html'`. Without it, `html` is silently
+    // ignored and the post is created with empty content. `lexical` needs
+    // no such flag since it's the native format.
+    const queryParams: Record<string, string> = {};
+    if ((params as { html?: string }).html) {
+      queryParams.source = 'html';
+    }
+
+    const postParams = {
+      ...params,
+      tags: toTagObjects(params.tags as unknown as string[] | undefined),
+    };
+
+    const post = await (ghostApi.posts.add as any)(postParams, queryParams);
     return {
       content: [
         {
@@ -410,11 +531,29 @@ export const createPost = async (params: CreatePostParams): Promise<ToolResponse
 
 export const updatePost = async ({ id, ...params }: { id: string } & UpdatePostParams): Promise<ToolResponse> => {
   try {
-    // updated_at is required
-    if (!params.updated_at) {
-      params.updated_at = new Date().toISOString();
+    const queryParams: Record<string, string> = {};
+    if ((params as { html?: string }).html) {
+      queryParams.source = 'html';
     }
-    const post = await ghostApi.posts.edit({ id, ...params });
+
+    // Ghost requires the post's real current `updated_at` for its
+    // optimistic-concurrency check on edits. A fabricated "now" timestamp
+    // mismatches the stored value and Ghost silently drops the edit
+    // (observed in production as an update that returns 200 but changes
+    // nothing). Always fetch the real value unless the caller explicitly
+    // supplied one.
+    if (!params.updated_at) {
+      const current = await ghostApi.posts.read({ id });
+      params.updated_at = current.updated_at ?? new Date().toISOString();
+    }
+
+    const postParams = {
+      id,
+      ...params,
+      tags: toTagObjects(params.tags as unknown as string[] | undefined),
+    };
+
+    const post = await (ghostApi.posts.edit as any)(postParams, queryParams);
     return {
       content: [
         {

@@ -22,6 +22,8 @@ import {
   deletePage,
   getPageBySlug,
   getTags,
+  deleteTag,
+  updateTag,
   getAuthors,
   getMember,
   getMembers,
@@ -118,6 +120,27 @@ class GhostServer {
             }
             return getTags(args);
 
+          case 'delete_tag': {
+            const { id } = args;
+            if (typeof id !== 'string') {
+              throw new McpError(ErrorCode.InvalidParams, 'ID must be a string');
+            }
+            return deleteTag({ id });
+          }
+
+          case 'update_tag': {
+            const { id, name, slug, description } = args;
+            if (typeof id !== 'string') {
+              throw new McpError(ErrorCode.InvalidParams, 'ID must be a string');
+            }
+            return updateTag({
+              id,
+              name: typeof name === 'string' ? name : undefined,
+              slug: typeof slug === 'string' ? slug : undefined,
+              description: typeof description === 'string' ? description : undefined,
+            });
+          }
+
           case 'get_authors':
             if (!isPaginationParams(args)) {
               throw new McpError(ErrorCode.InvalidParams, 'Invalid pagination parameters');
@@ -125,7 +148,14 @@ class GhostServer {
             return getAuthors(args);
 
           case 'create_post': {
-            const { title, html, lexical, status, visibility, published_at, tags, authors, featured, email_subject, email_only, newsletter } = args;
+            const {
+              title, html, lexical, status, visibility, published_at, tags, authors, featured,
+              feature_image, feature_image_alt, feature_image_caption,
+              twitter_image, twitter_title, twitter_description,
+              og_image, og_title, og_description,
+              meta_title, meta_description, custom_excerpt,
+              email_subject, email_only, newsletter
+            } = args;
             if (!title || typeof title !== 'string') {
               throw new McpError(ErrorCode.InvalidParams, 'Title is required and must be a string');
             }
@@ -139,17 +169,40 @@ class GhostServer {
               tags: Array.isArray(tags) ? tags.filter((t): t is string => typeof t === 'string') : undefined,
               authors: Array.isArray(authors) ? authors.filter((a): a is string => typeof a === 'string') : undefined,
               featured: typeof featured === 'boolean' ? featured : undefined,
+              feature_image: typeof feature_image === 'string' ? feature_image : undefined,
+              feature_image_alt: typeof feature_image_alt === 'string' ? feature_image_alt : undefined,
+              feature_image_caption: typeof feature_image_caption === 'string' ? feature_image_caption : undefined,
+              twitter_image: typeof twitter_image === 'string' ? twitter_image : undefined,
+              twitter_title: typeof twitter_title === 'string' ? twitter_title : undefined,
+              twitter_description: typeof twitter_description === 'string' ? twitter_description : undefined,
+              og_image: typeof og_image === 'string' ? og_image : undefined,
+              og_title: typeof og_title === 'string' ? og_title : undefined,
+              og_description: typeof og_description === 'string' ? og_description : undefined,
+              meta_title: typeof meta_title === 'string' ? meta_title : undefined,
+              meta_description: typeof meta_description === 'string' ? meta_description : undefined,
+              custom_excerpt: typeof custom_excerpt === 'string' ? custom_excerpt : undefined,
               email_subject: typeof email_subject === 'string' ? email_subject : undefined,
               email_only: typeof email_only === 'boolean' ? email_only : undefined,
               newsletter: typeof newsletter === 'boolean' ? newsletter : undefined,
-            });
+            } as any);
           }
 
           case 'update_post': {
-            const { id, title, html, lexical, status, visibility, published_at, tags, authors, featured, email_subject, email_only, newsletter } = args;
+            const {
+              id, title, html, lexical, status, visibility, published_at, tags, authors, featured,
+              feature_image, feature_image_alt, feature_image_caption,
+              twitter_image, twitter_title, twitter_description,
+              og_image, og_title, og_description,
+              meta_title, meta_description, custom_excerpt,
+              email_subject, email_only, newsletter
+            } = args;
             if (typeof id !== 'string') {
               throw new McpError(ErrorCode.InvalidParams, 'ID must be a string');
             }
+            // Note: updated_at is intentionally NOT set here. updatePost()
+            // fetches the post's real current updated_at itself when the
+            // caller doesn't supply one, which is required for Ghost's
+            // edit-collision check to succeed (see posts.ts).
             return updatePost({
               id,
               title: typeof title === 'string' ? title : undefined,
@@ -161,11 +214,22 @@ class GhostServer {
               tags: Array.isArray(tags) ? tags.filter((t): t is string => typeof t === 'string') : undefined,
               authors: Array.isArray(authors) ? authors.filter((a): a is string => typeof a === 'string') : undefined,
               featured: typeof featured === 'boolean' ? featured : undefined,
+              feature_image: typeof feature_image === 'string' ? feature_image : undefined,
+              feature_image_alt: typeof feature_image_alt === 'string' ? feature_image_alt : undefined,
+              feature_image_caption: typeof feature_image_caption === 'string' ? feature_image_caption : undefined,
+              twitter_image: typeof twitter_image === 'string' ? twitter_image : undefined,
+              twitter_title: typeof twitter_title === 'string' ? twitter_title : undefined,
+              twitter_description: typeof twitter_description === 'string' ? twitter_description : undefined,
+              og_image: typeof og_image === 'string' ? og_image : undefined,
+              og_title: typeof og_title === 'string' ? og_title : undefined,
+              og_description: typeof og_description === 'string' ? og_description : undefined,
+              meta_title: typeof meta_title === 'string' ? meta_title : undefined,
+              meta_description: typeof meta_description === 'string' ? meta_description : undefined,
+              custom_excerpt: typeof custom_excerpt === 'string' ? custom_excerpt : undefined,
               email_subject: typeof email_subject === 'string' ? email_subject : undefined,
               email_only: typeof email_only === 'boolean' ? email_only : undefined,
               newsletter: typeof newsletter === 'boolean' ? newsletter : undefined,
-              updated_at: new Date().toISOString(),
-            });
+            } as any);
           }
 
           case 'delete_post': {

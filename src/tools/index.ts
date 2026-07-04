@@ -5,258 +5,41 @@ export * from './pages.js';
 export * from './members.js';
 export * from './images.js';
 
+// Import the canonical per-tool schemas directly rather than re-declaring
+// them here. This file used to keep a second, hand-maintained copy of
+// every posts/tags schema in `toolSchemas`, which is what let the create/
+// update post schemas silently drift out of sync with reality (they were
+// missing feature_image, twitter_image, meta_title, meta_description, etc.
+// for a long time because nobody was updating both copies). Posts/tags
+// schemas below now come from a single source of truth in posts.ts/tags.ts.
+import {
+  getPostsSchema,
+  getPostSchema,
+  searchPostsSchema,
+  createPostSchema,
+  updatePostSchema,
+  deletePostSchema,
+  getPostBySlugSchema,
+} from './posts.js';
+import {
+  getTagsSchema,
+  deleteTagSchema,
+  updateTagSchema,
+} from './tags.js';
+
 export const toolSchemas = [
   // Posts
-  {
-    name: 'get_posts',
-    description: 'Get a list of blog posts',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        limit: {
-          type: 'number',
-          description: 'Number of posts to retrieve (default: 10)',
-          minimum: 1,
-          maximum: 100
-        },
-        page: {
-          type: 'number',
-          description: 'Page number (default: 1)',
-          minimum: 1
-        }
-      }
-    },
-  },
-  {
-    name: 'get_post',
-    description: 'Get a specific post',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        id: {
-          type: 'string',
-          description: 'Post ID'
-        }
-      },
-      required: ['id']
-    },
-  },
-  {
-    name: 'search_posts',
-    description: 'Search posts',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        query: {
-          type: 'string',
-          description: 'Search keyword'
-        },
-        limit: {
-          type: 'number',
-          description: 'Number of posts to retrieve (default: 10)',
-          minimum: 1,
-          maximum: 100
-        }
-      },
-      required: ['query']
-    },
-  },
-  {
-    name: 'create_post',
-    description: 'Create a new post',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        title: {
-          type: 'string',
-          description: 'Post title'
-        },
-        html: {
-          type: 'string',
-          description: 'Content in HTML format'
-        },
-        lexical: {
-          type: 'string',
-          description: 'Content in Lexical format'
-        },
-        status: {
-          type: 'string',
-          description: 'Post status',
-          enum: ['published', 'draft', 'scheduled']
-        },
-        visibility: {
-          type: 'string',
-          description: 'Visibility scope',
-          enum: ['public', 'members', 'paid', 'tiers']
-        },
-        published_at: {
-          type: 'string',
-          description: 'Publication date (for scheduled posts)'
-        },
-        tags: {
-          type: 'array',
-          description: 'Array of tag IDs',
-          items: {
-            type: 'string'
-          }
-        },
-        authors: {
-          type: 'array',
-          description: 'Array of author IDs',
-          items: {
-            type: 'string'
-          }
-        },
-        featured: {
-          type: 'boolean',
-          description: 'Set as featured post'
-        },
-        email_subject: {
-          type: 'string',
-          description: 'Email subject line'
-        },
-        email_only: {
-          type: 'boolean',
-          description: 'Email-only post'
-        },
-        newsletter: {
-          type: 'boolean',
-          description: 'Whether to send email'
-        }
-      },
-      required: ['title']
-    },
-  },
-  {
-    name: 'update_post',
-    description: 'Update a post',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        id: {
-          type: 'string',
-          description: 'Post ID'
-        },
-        title: {
-          type: 'string',
-          description: 'Post title'
-        },
-        html: {
-          type: 'string',
-          description: 'Content in HTML format'
-        },
-        lexical: {
-          type: 'string',
-          description: 'Content in Lexical format'
-        },
-        status: {
-          type: 'string',
-          description: 'Post status',
-          enum: ['published', 'draft', 'scheduled']
-        },
-        visibility: {
-          type: 'string',
-          description: 'Visibility scope',
-          enum: ['public', 'members', 'paid', 'tiers']
-        },
-        published_at: {
-          type: 'string',
-          description: 'Publication date (for scheduled posts)'
-        },
-        tags: {
-          type: 'array',
-          description: 'Array of tag IDs (replaces existing tags)',
-          items: {
-            type: 'string'
-          }
-        },
-        authors: {
-          type: 'array',
-          description: 'Array of author IDs (replaces existing authors)',
-          items: {
-            type: 'string'
-          }
-        },
-        featured: {
-          type: 'boolean',
-          description: 'Set as featured post'
-        },
-        email_subject: {
-          type: 'string',
-          description: 'Email subject line'
-        },
-        email_only: {
-          type: 'boolean',
-          description: 'Email-only post'
-        },
-        newsletter: {
-          type: 'boolean',
-          description: 'Whether to send email'
-        }
-      },
-      required: ['id']
-    },
-  },
-  {
-    name: 'delete_post',
-    description: 'Delete a post',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        id: {
-          type: 'string',
-          description: 'Post ID'
-        }
-      },
-      required: ['id']
-    },
-  },
-  {
-    name: 'get_post_by_slug',
-    description: 'Get a post by slug',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        slug: {
-          type: 'string',
-          description: 'Post slug'
-        },
-        formats: {
-          type: 'array',
-          description: 'Content formats to retrieve',
-          items: {
-            type: 'string',
-            enum: ['html', 'mobiledoc', 'lexical']
-          }
-        },
-        include: {
-          type: 'array',
-          description: 'Related data to include',
-          items: {
-            type: 'string',
-            enum: ['authors', 'tags']
-          }
-        }
-      },
-      required: ['slug']
-    },
-  },
+  getPostsSchema,
+  getPostSchema,
+  searchPostsSchema,
+  createPostSchema,
+  updatePostSchema,
+  deletePostSchema,
+  getPostBySlugSchema,
   // Tags
-  {
-    name: 'get_tags',
-    description: 'Get list of tags',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        limit: {
-          type: 'number',
-          description: 'Number of tags to retrieve (default: 10)',
-          minimum: 1,
-          maximum: 100
-        }
-      }
-    },
-  },
+  getTagsSchema,
+  deleteTagSchema,
+  updateTagSchema,
   // Authors
   {
     name: 'get_authors',
